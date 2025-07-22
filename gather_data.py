@@ -116,7 +116,7 @@ class Game:
                 new_board = copy.deepcopy(now_game.board)
                 new_occupied_board = copy.deepcopy(now_game.occupied_board)
                 temp_game = Game(new_board, new_occupied_board, self.first, now_game.my_score, now_game.opp_score, now_game.passed)
-                temp_game.updateMove(*move, True)
+                _ = temp_game.updateMove(*move, True)
                 eval, _ = self.minimax(temp_game, depth - 1, False, alpha, beta)
                 if eval > maxEval:
                     maxEval = eval
@@ -131,7 +131,7 @@ class Game:
                 new_board = copy.deepcopy(now_game.board)
                 new_occupied_board = copy.deepcopy(now_game.occupied_board)
                 temp_game = Game(new_board, new_occupied_board, self.first, now_game.my_score, now_game.opp_score, now_game.passed)
-                temp_game.updateMove(*move, False)
+                _ = temp_game.updateMove(*move, False)
                 eval, _ = self.minimax(temp_game, depth - 1, True, alpha, beta)
                 if eval < minEval:
                     minEval = eval
@@ -143,12 +143,6 @@ class Game:
 
     # 실제 AI가 수를 계산하는 함수
     def calculateMove(self, _myTime, _oppTime, turn_cnt):
-        # Minimax 트리 탐색 깊이
-        # if turn_cnt < 10:
-        #     depth = 3
-        # else:
-        #     depth = 4
-
         moves = self.generateValidMoves()
         if len(moves) > 12:
             depth = 3
@@ -158,19 +152,16 @@ class Game:
             depth = 7
         temp_game = Game(self.board, self.occupied_board, self.first, self.my_score, self.opp_score, self.passed)
         _, best_move = self.minimax(temp_game, depth, True)
-        return best_move
-
-    # 상대방의 수를 받아 보드에 반영
-    def updateOpponentAction(self, action, _time):
-        self.updateMove(*action, False)
+        return best_move, moves
 
     # 주어진 수를 보드에 반영 (칸을 0으로 지움)
     def updateMove(self, r1, c1, r2, c2, _isMyMove):
+        eaten_cnt = 0
         if r1 == c1 == r2 == c2 == -1:
             if self.passed:
                 self.ended = True
             self.passed = True
-            return
+            return eaten_cnt
         for r in range(r1, r2 + 1):
             for c in range(c1, c2 + 1):
                 self.board[r][c] = 0
@@ -183,17 +174,20 @@ class Game:
                     weight = 1
                 if _isMyMove:
                     if self.occupied_board[r][c] == -1:
+                        eaten_cnt += 1
                         self.opp_score -= weight * 2
                     if self.occupied_board[r][c] != 1:
                         self.my_score += weight
                         self.occupied_board[r][c] = 1
                 else:
                     if self.occupied_board[r][c] == 1:
+                        eaten_cnt += 1
                         self.my_score -= weight * 2
                     if self.occupied_board[r][c] != -1:
                         self.opp_score += weight
                         self.occupied_board[r][c] = -1
         self.passed = False
+        return eaten_cnt
 
 
 
@@ -201,33 +195,143 @@ class Game:
 # main(): 입출력 처리 및 게임 진행
 # ================================
 import random
+import pickle
 
 R = 10
 C = 17
-repeat_num = 1000
+repeat_num = 1
+
+def flip_ones(matrix):
+    for i in range(len(matrix)):
+        for j in range(len(matrix[0])):
+            if matrix[i][j] == -1:
+                matrix[i][j] = 1
+            elif matrix[i][j] == 1:
+                matrix[i][j] = -1
+    return matrix
+
+def count_from_matrix(matrix, value):
+    count_num = 0
+    for row in matrix:
+        for val in row:
+            if val == value:
+                count_num += 1
+    return count_num
+
+def edge_count_from_matrix(matrix, value):
+    height = len(matrix)
+    width = len(matrix[0])
+
+    count_num = 0
+    for row_idx, row in enumearte(matrix):
+        for val_idx, val in enumerate(row):
+            if row_idx == 0 or row_idx == height - 1 or val_idx == 0 or val_idx == width - 1:
+                if val == value:
+                    count_num += 1
+    return count_num
+
+def corner_count_from_matrix(matrix, value):
+    height = len(matrix)
+    width = len(matrix[0])
+
+    count_num = 0
+    for row_idx, row in enumearte(matrix):
+        for val_idx, val in enumerate(row):
+            if (row_idx == 0 or row_idx == height - 1) and (val_idx == 0 or val_idx == width - 1):
+                if val == value:
+                    count_num += 1
+    return count_num
+
+def who_win(matrix):
+    count_neg1 = count_from_matrix(matrix, -1)
+    count_pos1 = count_from_matrix(matrix, 1)
+    return 0 if count_neg1 < count_pos1 else 1
 
 def main():
     turn_cnt = 0
-    while True:
-            # 보드 초기화
-            board = [[random.randint(0, 9) for _ in range(C)] for _ in range(R)]
-            occupied_board = [[0] * len(board[0]) for _ in range(len(board))]
-            global game
-            game = Game(board, occupied_board, True)
-            ret = game.calculateMove(0, 0, turn_cnt)
-            game.updateMove(*ret, True)
+    for repeat_idx in range(repeat_num):
+        # 보드 초기화
+        board = [[random.randint(0, 9) for _ in range(C)] for _ in range(R)]
+        occupied_board = [[0] * len(board[0]) for _ in range(len(board))]
+        game = Game(board, occupied_board, True)
+
+        data1 = []
+        data2 = []
+
+        eaten_cnt1 = eaten_cnt2 = 0
+
+        while not game.ended:
             turn_cnt += 1
 
-        if command == "OPP":
-            # 상대 턴 반영
-            r1, c1, r2, c2, time = map(int, param)
-            game.updateOpponentAction((r1, c1, r2, c2), time)
-            continue
+            ret, _ = game.calculateMove(0, 0, turn_cnt)
+            eaten_cnt1 += game.updateMove(*ret, True)
+            _, moves_num1 = game.calculateMove(0, 0, turn_cnt)
+            area_num1 = count_from_matrix(game.occupied_board, 1)
+            edge_num1 = edge_count_from_matrix(game.occupied_board, 1)
+            corner_num1 = corner_count_from_matrix(game.occupied_board, 1)
+            area_num2 = count_from_matrix(game.occupied_board, -1)
+            edge_num2 = edge_count_from_matrix(game.occupied_board, -1)
+            corner_num2 = corner_count_from_matrix(game.occupied_board, -1)
 
-        if command == "FINISH":
-            break
+            data1.append([
+                turn_cnt,
+                0,
+                moves_num1,
+                area_num1,
+                edge_num1,
+                corner_num1,
+                area_num2,
+                edge_num2,
+                corner_num2,
+                eaten_cnt1,
+                eaten_cnt2
+            ])
 
-        assert False, f"Invalid command {command}"
+            if game.ended:
+                break
+
+            game.occupied_board = flip_ones(game.occupied_board)
+            
+            ret, _ = game.calculateMove(0, 0, turn_cnt)
+            eaten_cnt2 += game.updateMove(*ret, True)
+            _, moves_num2 = game.calculateMove(0, 0, turn_cnt)
+            area_num1 = count_from_matrix(game.occupied_board, -1)
+            edge_num1 = edge_count_from_matrix(game.occupied_board, -1)
+            corner_num1 = corner_count_from_matrix(game.occupied_board, -1)
+            area_num2 = count_from_matrix(game.occupied_board, 1)
+            edge_num2 = edge_count_from_matrix(game.occupied_board, 1)
+            corner_num2 = corner_count_from_matrix(game.occupied_board, 1)
+
+            data2.append([
+                turn_cnt,
+                1,
+                moves_num2,
+                area_num2,
+                edge_num2,
+                corner_num2,
+                area_num1,
+                edge_num1,
+                corner_num1,
+                eaten_cnt2,
+                eaten_cnt1
+            ])
+            
+            game.occupied_board = flip_ones(game.occupied_board)
+        
+        won_player = who_win(game.occupied_board)
+        if won_player == 0:
+            for sample in data1:
+                sample.append(1)
+            for sample in data2:
+                sample.append(0)
+        else:
+            for sample in data1:
+                sample.append(0)
+            for sample in data2:
+                sample.append(1)
+
+        with open(f'data/lst{repeat_idx}.pkl', 'wb') as f:
+            pickle.dump(data1 + data2, f)
 
 
 if __name__ == "__main__":
