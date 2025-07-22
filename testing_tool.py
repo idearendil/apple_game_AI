@@ -10,6 +10,7 @@ from typing import List, Tuple
 
 R = 10
 C = 17
+
 import threading
 
 class Player:
