@@ -223,7 +223,7 @@ def edge_count_from_matrix(matrix, value):
     width = len(matrix[0])
 
     count_num = 0
-    for row_idx, row in enumearte(matrix):
+    for row_idx, row in enumerate(matrix):
         for val_idx, val in enumerate(row):
             if row_idx == 0 or row_idx == height - 1 or val_idx == 0 or val_idx == width - 1:
                 if val == value:
@@ -235,7 +235,7 @@ def corner_count_from_matrix(matrix, value):
     width = len(matrix[0])
 
     count_num = 0
-    for row_idx, row in enumearte(matrix):
+    for row_idx, row in enumerate(matrix):
         for val_idx, val in enumerate(row):
             if (row_idx == 0 or row_idx == height - 1) and (val_idx == 0 or val_idx == width - 1):
                 if val == value:
