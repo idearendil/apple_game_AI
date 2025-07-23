@@ -152,7 +152,7 @@ class Game:
             depth = 7
         temp_game = Game(self.board, self.occupied_board, self.first, self.my_score, self.opp_score, self.passed)
         _, best_move = self.minimax(temp_game, depth, True)
-        return best_move, moves
+        return best_move, len(moves)
 
     # 주어진 수를 보드에 반영 (칸을 0으로 지움)
     def updateMove(self, r1, c1, r2, c2, _isMyMove):
@@ -199,7 +199,7 @@ import pickle
 
 R = 10
 C = 17
-repeat_num = 1
+repeat_num = 10000
 
 def flip_ones(matrix):
     for i in range(len(matrix)):
@@ -250,6 +250,7 @@ def who_win(matrix):
 def main():
     turn_cnt = 0
     for repeat_idx in range(repeat_num):
+        print(f"Repeat {repeat_idx + 1} / {repeat_num}")
         # 보드 초기화
         board = [[random.randint(0, 9) for _ in range(C)] for _ in range(R)]
         occupied_board = [[0] * len(board[0]) for _ in range(len(board))]
